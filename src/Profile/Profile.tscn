@@ -1,0 +1,230 @@
+[gd_scene load_steps=10 format=2]
+
+[ext_resource path="res://assets/theme/theme.tres" type="Theme" id=1]
+[ext_resource path="res://src/Profile/Profile.gd" type="Script" id=2]
+[ext_resource path="res://assets/icons/person.svg" type="Texture" id=3]
+[ext_resource path="res://assets/icons/trophy.svg" type="Texture" id=4]
+[ext_resource path="res://assets/icons/close.svg" type="Texture" id=5]
+[ext_resource path="res://assets/icons/ball.svg" type="Texture" id=6]
+[ext_resource path="res://assets/icons/edit.svg" type="Texture" id=7]
+[ext_resource path="res://assets/icons/save.svg" type="Texture" id=8]
+[ext_resource path="res://assets/icons/back.svg" type="Texture" id=9]
+
+[sub_resource type="StyleBoxFlat" id=1]
+bg_color = Color( 0.24, 0.17, 0.56, 0.97 )
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 8
+border_color = Color( 0.08, 0.04, 0.04, 1 )
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+shadow_color = Color( 0.05, 0.02, 0.02, 0.6 )
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id=2]
+bg_color = Color( 0.14, 0.09, 0.35, 0.9 )
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color( 0.91, 0.51, 0.05, 0.4 )
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="Profile" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource( 1 )
+script = ExtResource( 2 )
+
+[node name="BG" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0.18, 0.12, 0.45, 1 )
+
+[node name="Card" type="PanelContainer" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -360.0
+margin_top = -220.0
+margin_right = 360.0
+margin_bottom = 220.0
+custom_styles/panel = SubResource( 1 )
+
+[node name="VBox" type="VBoxContainer" parent="Card"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 32.0
+margin_top = 24.0
+margin_right = -32.0
+margin_bottom = -24.0
+custom_constants/separation = 10
+
+[node name="TitleRow" type="HBoxContainer" parent="Card/VBox"]
+alignment = 1
+
+[node name="PersonIcon" type="TextureRect" parent="Card/VBox/TitleRow"]
+rect_min_size = Vector2( 28, 28 )
+size_flags_vertical = 4
+texture = ExtResource( 3 )
+expand = true
+stretch_mode = 5
+
+[node name="TitleLabel" type="Label" parent="Card/VBox/TitleRow"]
+text = "  MY DASHBOARD"
+align = 1
+
+[node name="Divider" type="ColorRect" parent="Card/VBox"]
+rect_min_size = Vector2( 0, 3 )
+color = Color( 0.91, 0.51, 0.05, 0.8 )
+
+[node name="UsernameRow" type="HBoxContainer" parent="Card/VBox"]
+rect_min_size = Vector2( 0, 40 )
+
+[node name="ULabel" type="Label" parent="Card/VBox/UsernameRow"]
+rect_min_size = Vector2( 120, 0 )
+modulate = Color( 0.98, 0.85, 0.2, 1 )
+text = "USERNAME"
+valign = 1
+
+[node name="UsernameLabel" type="Label" parent="Card/VBox/UsernameRow"]
+size_flags_horizontal = 3
+text = "Player"
+valign = 1
+
+[node name="WalletRow" type="HBoxContainer" parent="Card/VBox"]
+rect_min_size = Vector2( 0, 40 )
+
+[node name="WLabel" type="Label" parent="Card/VBox/WalletRow"]
+rect_min_size = Vector2( 120, 0 )
+modulate = Color( 0.98, 0.85, 0.2, 1 )
+text = "WALLET"
+valign = 1
+
+[node name="WalletLabel" type="Label" parent="Card/VBox/WalletRow"]
+size_flags_horizontal = 3
+text = "0x..."
+valign = 1
+
+[node name="Divider2" type="ColorRect" parent="Card/VBox"]
+rect_min_size = Vector2( 0, 2 )
+color = Color( 1, 1, 1, 0.15 )
+
+[node name="StatsTitle" type="Label" parent="Card/VBox"]
+modulate = Color( 0.98, 0.85, 0.2, 1 )
+text = "STATS"
+align = 1
+
+[node name="StatsGrid" type="GridContainer" parent="Card/VBox"]
+columns = 6
+
+[node name="WinsLbl" type="HBoxContainer" parent="Card/VBox/StatsGrid"]
+rect_min_size = Vector2( 110, 32 )
+alignment = 1
+
+[node name="TrophyIcon" type="TextureRect" parent="Card/VBox/StatsGrid/WinsLbl"]
+rect_min_size = Vector2( 20, 20 )
+size_flags_vertical = 4
+modulate = Color( 0.7, 0.9, 0.7, 1 )
+texture = ExtResource( 4 )
+expand = true
+stretch_mode = 5
+
+[node name="WinsText" type="Label" parent="Card/VBox/StatsGrid/WinsLbl"]
+modulate = Color( 0.7, 0.9, 0.7, 1 )
+text = " WINS"
+
+[node name="LossesLbl" type="HBoxContainer" parent="Card/VBox/StatsGrid"]
+rect_min_size = Vector2( 110, 32 )
+alignment = 1
+
+[node name="CloseIcon" type="TextureRect" parent="Card/VBox/StatsGrid/LossesLbl"]
+rect_min_size = Vector2( 20, 20 )
+size_flags_vertical = 4
+modulate = Color( 1.0, 0.6, 0.6, 1 )
+texture = ExtResource( 5 )
+expand = true
+stretch_mode = 5
+
+[node name="LossesText" type="Label" parent="Card/VBox/StatsGrid/LossesLbl"]
+modulate = Color( 1.0, 0.6, 0.6, 1 )
+text = " LOSSES"
+
+[node name="GoalsLbl" type="HBoxContainer" parent="Card/VBox/StatsGrid"]
+rect_min_size = Vector2( 110, 32 )
+alignment = 1
+
+[node name="BallIcon" type="TextureRect" parent="Card/VBox/StatsGrid/GoalsLbl"]
+rect_min_size = Vector2( 20, 20 )
+size_flags_vertical = 4
+modulate = Color( 0.6, 0.8, 1.0, 1 )
+texture = ExtResource( 6 )
+expand = true
+stretch_mode = 5
+
+[node name="GoalsText" type="Label" parent="Card/VBox/StatsGrid/GoalsLbl"]
+modulate = Color( 0.6, 0.8, 1.0, 1 )
+text = " GOALS"
+
+[node name="WinsVal" type="Label" parent="Card/VBox/StatsGrid"]
+rect_min_size = Vector2( 110, 0 )
+text = "0"
+align = 1
+
+[node name="LossesVal" type="Label" parent="Card/VBox/StatsGrid"]
+rect_min_size = Vector2( 110, 0 )
+text = "0"
+align = 1
+
+[node name="GoalsVal" type="Label" parent="Card/VBox/StatsGrid"]
+rect_min_size = Vector2( 110, 0 )
+text = "0"
+align = 1
+
+[node name="EditRow" type="HBoxContainer" parent="Card/VBox"]
+rect_min_size = Vector2( 0, 52 )
+
+[node name="EditNameInput" type="LineEdit" parent="Card/VBox/EditRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 52 )
+placeholder_text = "New username"
+
+[node name="EditWalletInput" type="LineEdit" parent="Card/VBox/EditRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 52 )
+placeholder_text = "New wallet"
+
+[node name="SaveBtn" type="Button" parent="Card/VBox/EditRow"]
+rect_min_size = Vector2( 90, 52 )
+text = "SAVE"
+icon = ExtResource( 8 )
+
+[node name="StatusLabel" type="Label" parent="Card/VBox"]
+modulate = Color( 0.6, 1.0, 0.6, 1 )
+text = ""
+align = 1
+
+[node name="BtnRow" type="HBoxContainer" parent="Card/VBox"]
+alignment = 1
+custom_constants/separation = 16
+
+[node name="EditBtn" type="Button" parent="Card/VBox/BtnRow"]
+rect_min_size = Vector2( 200, 52 )
+text = "EDIT PROFILE"
+icon = ExtResource( 7 )
+
+[node name="BackBtn" type="Button" parent="Card/VBox/BtnRow"]
+rect_min_size = Vector2( 160, 52 )
+text = "BACK"
+icon = ExtResource( 9 )
+
+[connection signal="pressed" from="Card/VBox/BtnRow/EditBtn"  to="." method="_on_EditBtn_pressed"]
+[connection signal="pressed" from="Card/VBox/EditRow/SaveBtn" to="." method="_on_SaveBtn_pressed"]
+[connection signal="pressed" from="Card/VBox/BtnRow/BackBtn"  to="." method="_on_BackBtn_pressed"]

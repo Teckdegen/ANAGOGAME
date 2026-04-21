@@ -1,0 +1,193 @@
+[gd_scene load_steps=11 format=2]
+
+[ext_resource path="res://assets/theme/theme.tres" type="Theme" id=1]
+[ext_resource path="res://src/Lobby/Lobby.gd" type="Script" id=2]
+[ext_resource path="res://assets/icons/ball.svg" type="Texture" id=3]
+[ext_resource path="res://assets/icons/person.svg" type="Texture" id=4]
+[ext_resource path="res://assets/icons/trophy.svg" type="Texture" id=5]
+[ext_resource path="res://assets/icons/refresh.svg" type="Texture" id=6]
+[ext_resource path="res://assets/icons/add.svg" type="Texture" id=7]
+[ext_resource path="res://assets/icons/hourglass.svg" type="Texture" id=8]
+[ext_resource path="res://assets/icons/close.svg" type="Texture" id=9]
+
+[sub_resource type="StyleBoxFlat" id=1]
+bg_color = Color( 0.24, 0.17, 0.56, 0.97 )
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 8
+border_color = Color( 0.08, 0.04, 0.04, 1 )
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+shadow_color = Color( 0.05, 0.02, 0.02, 0.7 )
+shadow_size = 14
+
+[sub_resource type="StyleBoxFlat" id=2]
+bg_color = Color( 0.14, 0.09, 0.35, 0.92 )
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color( 0.91, 0.51, 0.05, 0.4 )
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[node name="Lobby" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme = ExtResource( 1 )
+script = ExtResource( 2 )
+
+[node name="BG" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0.18, 0.12, 0.45, 1 )
+
+[node name="BGStripe" type="ColorRect" parent="."]
+anchor_right = 1.0
+margin_bottom = 6.0
+color = Color( 0.91, 0.51, 0.05, 1 )
+
+[node name="BGStripeBottom" type="ColorRect" parent="."]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_top = -6.0
+color = Color( 0.91, 0.51, 0.05, 1 )
+
+[node name="RoomsPanel" type="VBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 16.0
+margin_top = 10.0
+margin_right = -16.0
+margin_bottom = -10.0
+custom_constants/separation = 6
+
+[node name="TopBar" type="HBoxContainer" parent="RoomsPanel"]
+rect_min_size = Vector2( 0, 52 )
+custom_constants/separation = 8
+
+[node name="BallIcon" type="TextureRect" parent="RoomsPanel/TopBar"]
+rect_min_size = Vector2( 32, 32 )
+size_flags_vertical = 4
+texture = ExtResource( 3 )
+expand = true
+stretch_mode = 5
+
+[node name="TitleLabel" type="Label" parent="RoomsPanel/TopBar"]
+size_flags_horizontal = 3
+text = "SLIME SOCCER"
+valign = 1
+
+[node name="UserLabel" type="Label" parent="RoomsPanel/TopBar"]
+size_flags_horizontal = 3
+modulate = Color( 0.98, 0.85, 0.2, 1 )
+text = "Player"
+align = 2
+valign = 1
+
+[node name="DashboardBtn" type="Button" parent="RoomsPanel/TopBar"]
+rect_min_size = Vector2( 52, 48 )
+icon = ExtResource( 4 )
+
+[node name="LeaderboardBtn" type="Button" parent="RoomsPanel/TopBar"]
+rect_min_size = Vector2( 52, 48 )
+icon = ExtResource( 5 )
+
+[node name="Divider1" type="ColorRect" parent="RoomsPanel"]
+rect_min_size = Vector2( 0, 3 )
+color = Color( 0.91, 0.51, 0.05, 0.7 )
+
+[node name="ActionRow" type="HBoxContainer" parent="RoomsPanel"]
+rect_min_size = Vector2( 0, 52 )
+custom_constants/separation = 8
+
+[node name="RoomsTitle" type="Label" parent="RoomsPanel/ActionRow"]
+size_flags_horizontal = 3
+text = "OPEN ROOMS"
+valign = 1
+
+[node name="RefreshBtn" type="Button" parent="RoomsPanel/ActionRow"]
+rect_min_size = Vector2( 52, 48 )
+icon = ExtResource( 6 )
+
+[node name="CreateRoomBtn" type="Button" parent="RoomsPanel/ActionRow"]
+rect_min_size = Vector2( 200, 48 )
+text = "CREATE ROOM"
+icon = ExtResource( 7 )
+
+[node name="VBox" type="VBoxContainer" parent="RoomsPanel"]
+size_flags_vertical = 3
+
+[node name="Scroll" type="ScrollContainer" parent="RoomsPanel/VBox"]
+size_flags_vertical = 3
+
+[node name="RoomsList" type="VBoxContainer" parent="RoomsPanel/VBox/Scroll"]
+size_flags_horizontal = 3
+custom_constants/separation = 8
+
+[node name="LoadingLabel" type="Label" parent="RoomsPanel/VBox/Scroll"]
+text = "Looking for rooms..."
+align = 1
+
+[node name="ErrorLabel" type="Label" parent="RoomsPanel"]
+modulate = Color( 1.0, 0.4, 0.4, 1 )
+text = ""
+align = 1
+
+[node name="WaitingPanel" type="PanelContainer" parent="."]
+visible = false
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -240.0
+margin_top = -160.0
+margin_right = 240.0
+margin_bottom = 160.0
+custom_styles/panel = SubResource( 1 )
+
+[node name="VBox" type="VBoxContainer" parent="WaitingPanel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 32.0
+margin_top = 32.0
+margin_right = -32.0
+margin_bottom = -32.0
+alignment = 1
+custom_constants/separation = 20
+
+[node name="WaitTitle" type="Label" parent="WaitingPanel/VBox"]
+text = "ROOM OPEN"
+align = 1
+
+[node name="HourglassIcon" type="TextureRect" parent="WaitingPanel/VBox"]
+rect_min_size = Vector2( 48, 48 )
+size_flags_horizontal = 4
+modulate = Color( 0.98, 0.85, 0.2, 1 )
+texture = ExtResource( 8 )
+expand = true
+stretch_mode = 5
+
+[node name="StatusLabel" type="Label" parent="WaitingPanel/VBox"]
+text = "Waiting for another player..."
+align = 1
+
+[node name="Spacer" type="Control" parent="WaitingPanel/VBox"]
+rect_min_size = Vector2( 0, 12 )
+
+[node name="CancelBtn" type="Button" parent="WaitingPanel/VBox"]
+rect_min_size = Vector2( 280, 56 )
+text = "CANCEL"
+icon = ExtResource( 9 )
+
+[connection signal="pressed" from="RoomsPanel/TopBar/DashboardBtn"     to="." method="_on_DashboardBtn_pressed"]
+[connection signal="pressed" from="RoomsPanel/TopBar/LeaderboardBtn"   to="." method="_on_LeaderboardBtn_pressed"]
+[connection signal="pressed" from="RoomsPanel/ActionRow/RefreshBtn"    to="." method="_on_RefreshBtn_pressed"]
+[connection signal="pressed" from="RoomsPanel/ActionRow/CreateRoomBtn" to="." method="_on_CreateRoomBtn_pressed"]
+[connection signal="pressed" from="WaitingPanel/VBox/CancelBtn"        to="." method="_on_CancelBtn_pressed"]

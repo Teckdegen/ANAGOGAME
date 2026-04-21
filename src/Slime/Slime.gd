@@ -63,10 +63,32 @@ var is_touching_left_wall = false
 var is_touching_right_wall = false
 var collision = null
 
+func _is_remote_controlled() -> bool:
+    if not has_node("/root/Network"):
+        return false
+    var net = get_node("/root/Network")
+    if net.my_peer_id == 0:
+        return false
+    # Host controls left slime (INITIAL_TEAM_INDEX == 0)
+    # Client controls right slime (INITIAL_TEAM_INDEX == 1)
+    var i_am_host = net.is_server
+    var this_is_left = (INITIAL_TEAM_INDEX == 0)
+    return (i_am_host and not this_is_left) or (not i_am_host and this_is_left)
+
 func _physics_process(_delta: float):
     if get_tree().paused:
         velocity.x = 0
         velocity.y = 0
+        return
+
+    # Remote slimes are positioned by network; just apply gravity so they land
+    if _is_remote_controlled():
+        if is_jumping:
+            velocity.y += GRAVITY
+        collision = move_and_collide(velocity * _delta)
+        if collision and collision.collider.name == 'Floor':
+            is_jumping = false
+            velocity = velocity.slide(collision.normal)
         return
 
     if is_jumping:
@@ -100,10 +122,10 @@ func _physics_process(_delta: float):
         if collision.collider.name == 'Floor':
             is_jumping = false
             velocity = velocity.slide(collision.normal)
-        if collision.normal == Vector2(1,0):
+        if collision.normal == Vector2(1, 0):
             is_touching_left_wall = true
             velocity = velocity.slide(collision.normal)
-        if collision.normal == Vector2(-1,0):
+        if collision.normal == Vector2(-1, 0):
             is_touching_right_wall = true
             velocity = velocity.slide(collision.normal)
 
