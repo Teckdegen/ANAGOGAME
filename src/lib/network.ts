@@ -1,5 +1,4 @@
 // WebRTC peer-to-peer with Google STUN + Open Relay TURN
-// Mirrors Network.gd logic exactly
 
 import { pushSignal, fetchSignals } from './supabase'
 
@@ -23,14 +22,15 @@ export type NetEvent =
 
 export class GameNetwork {
   private pc:       RTCPeerConnection | null = null
-  private dc:       RTCDataChannel   | null = null   // reliable channel
-  private dcFast:   RTCDataChannel   | null = null   // unreliable channel
+  private dc:       RTCDataChannel   | null = null   // reliable
+  private dcFast:   RTCDataChannel   | null = null   // unreliable
   private roomId:   number | null = null
   private playerId: string = ''
   private _isHost:  boolean = false
   private pollInterval: ReturnType<typeof setInterval> | null = null
   private pendingCandidates: RTCIceCandidateInit[] = []
   private remoteDescSet = false
+  private _connectedFired = false   // guard: only fire 'connected' once
 
   public onEvent: (e: NetEvent) => void = () => {}
 
@@ -64,16 +64,23 @@ export class GameNetwork {
   private _setup() {
     this.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
 
-    // Reliable data channel (goals, scores)
     if (this._isHost) {
+      // Host creates both channels
       this.dc     = this.pc.createDataChannel('reliable',   { ordered: true })
       this.dcFast = this.pc.createDataChannel('unreliable', { ordered: false, maxRetransmits: 0 })
-      this._wireDataChannel(this.dc)
-      this._wireDataChannel(this.dcFast)
+      this._wireChannel(this.dc,     'reliable')
+      this._wireChannel(this.dcFast, 'unreliable')
     } else {
+      // Guest receives channels
       this.pc.ondatachannel = (e) => {
-        if (e.channel.label === 'reliable')   { this.dc     = e.channel; this._wireDataChannel(this.dc) }
-        if (e.channel.label === 'unreliable') { this.dcFast = e.channel; this._wireDataChannel(this.dcFast) }
+        if (e.channel.label === 'reliable') {
+          this.dc = e.channel
+          this._wireChannel(this.dc, 'reliable')
+        }
+        if (e.channel.label === 'unreliable') {
+          this.dcFast = e.channel
+          this._wireChannel(this.dcFast, 'unreliable')
+        }
       }
     }
 
@@ -85,74 +92,120 @@ export class GameNetwork {
       }
     }
 
+    // Only use connection state for disconnect/fail — NOT for 'connected'
+    // because data channels may not be open yet when state becomes 'connected'
     this.pc.onconnectionstatechange = () => {
-      if (this.pc?.connectionState === 'connected')    this.onEvent({ type: 'connected' })
-      if (this.pc?.connectionState === 'disconnected') this.onEvent({ type: 'disconnected' })
-      if (this.pc?.connectionState === 'failed')       this.onEvent({ type: 'failed', reason: 'WebRTC connection failed' })
+      const s = this.pc?.connectionState
+      if (s === 'disconnected' || s === 'closed') this.onEvent({ type: 'disconnected' })
+      if (s === 'failed') this.onEvent({ type: 'failed', reason: 'WebRTC connection failed' })
     }
   }
 
-  private _wireDataChannel(dc: RTCDataChannel) {
+  // Wire a data channel — fire 'connected' when the FIRST channel opens
+  private _wireChannel(dc: RTCDataChannel, _label: string) {
+    dc.onopen = () => {
+      if (!this._connectedFired) {
+        this._connectedFired = true
+        // Stop polling — signaling is done
+        if (this.pollInterval) {
+          clearInterval(this.pollInterval)
+          this.pollInterval = null
+        }
+        this.onEvent({ type: 'connected' })
+      }
+    }
+    dc.onclose = () => {
+      this.onEvent({ type: 'disconnected' })
+    }
     dc.onmessage = (e) => this._handleMessage(e.data)
   }
 
   // ─── Signal polling ─────────────────────────────────────────────────────
 
   private _startPolling() {
-    this.pollInterval = setInterval(() => this._poll(), 1000)
+    // Poll immediately, then every 800ms
+    this._poll()
+    this.pollInterval = setInterval(() => this._poll(), 800)
   }
 
   private async _poll() {
-    if (!this.roomId) return
-    const signals = await fetchSignals(this.roomId, this.playerId)
-    for (const sig of signals) {
-      if (sig.type === 'offer' && !this._isHost) {
-        await this.pc!.setRemoteDescription({ type: 'offer', sdp: sig.payload })
-        this.remoteDescSet = true
-        await this._flushCandidates()
-        const answer = await this.pc!.createAnswer()
-        await this.pc!.setLocalDescription(answer)
-        await pushSignal(this.roomId!, this.playerId, 'answer', answer.sdp!)
-      } else if (sig.type === 'answer' && this._isHost) {
-        await this.pc!.setRemoteDescription({ type: 'answer', sdp: sig.payload })
-        this.remoteDescSet = true
-        await this._flushCandidates()
-      } else if (sig.type === 'candidate') {
-        const parts = sig.payload.split('\n')
-        if (parts.length >= 3) {
-          const cand: RTCIceCandidateInit = { sdpMid: parts[0], sdpMLineIndex: parseInt(parts[1]), candidate: parts[2] }
-          if (this.remoteDescSet) await this.pc!.addIceCandidate(cand)
-          else this.pendingCandidates.push(cand)
+    if (!this.roomId || this._connectedFired) return
+    try {
+      const signals = await fetchSignals(this.roomId, this.playerId)
+      for (const sig of signals) {
+        await this._handleSignal(sig)
+      }
+    } catch {
+      // Network error during signaling — ignore, will retry
+    }
+  }
+
+  private async _handleSignal(sig: { type: string; payload: string }) {
+    if (!this.pc) return
+
+    if (sig.type === 'offer' && !this._isHost) {
+      await this.pc.setRemoteDescription({ type: 'offer', sdp: sig.payload })
+      this.remoteDescSet = true
+      await this._flushCandidates()
+      const answer = await this.pc.createAnswer()
+      await this.pc.setLocalDescription(answer)
+      await pushSignal(this.roomId!, this.playerId, 'answer', answer.sdp!)
+
+    } else if (sig.type === 'answer' && this._isHost) {
+      await this.pc.setRemoteDescription({ type: 'answer', sdp: sig.payload })
+      this.remoteDescSet = true
+      await this._flushCandidates()
+
+    } else if (sig.type === 'candidate') {
+      const parts = sig.payload.split('\n')
+      if (parts.length >= 3) {
+        const cand: RTCIceCandidateInit = {
+          sdpMid:        parts[0],
+          sdpMLineIndex: parseInt(parts[1]),
+          candidate:     parts[2],
+        }
+        if (this.remoteDescSet) {
+          await this.pc.addIceCandidate(cand).catch(() => {})
+        } else {
+          this.pendingCandidates.push(cand)
         }
       }
     }
   }
 
   private async _flushCandidates() {
-    for (const c of this.pendingCandidates) await this.pc!.addIceCandidate(c)
+    for (const c of this.pendingCandidates) {
+      await this.pc!.addIceCandidate(c).catch(() => {})
+    }
     this.pendingCandidates = []
   }
 
   // ─── Send helpers ────────────────────────────────────────────────────────
 
   sendBallState(pos: [number,number], vel: [number,number], angVel: number) {
-    if (!this._isHost || !this.dcFast || this.dcFast.readyState !== 'open') return
-    this.dcFast.send(JSON.stringify({ t: 'b', pos, vel, av: angVel }))
+    if (!this._isHost) return
+    this._sendFast(JSON.stringify({ t: 'b', pos, vel, av: angVel }))
   }
 
   sendSlimeState(pos: [number,number]) {
-    if (!this.dcFast || this.dcFast.readyState !== 'open') return
-    this.dcFast.send(JSON.stringify({ t: 's', h: this._isHost, pos }))
+    this._sendFast(JSON.stringify({ t: 's', h: this._isHost, pos }))
   }
 
   sendGoal(side: 'left' | 'right') {
-    if (!this.dc || this.dc.readyState !== 'open') return
-    this.dc.send(JSON.stringify({ t: 'g', side }))
+    this._sendReliable(JSON.stringify({ t: 'g', side }))
   }
 
   sendScores(left: number, right: number) {
-    if (!this.dc || this.dc.readyState !== 'open') return
-    this.dc.send(JSON.stringify({ t: 'sc', left, right }))
+    this._sendReliable(JSON.stringify({ t: 'sc', left, right }))
+  }
+
+  private _sendFast(data: string) {
+    const ch = this.dcFast ?? this.dc
+    if (ch?.readyState === 'open') ch.send(data)
+  }
+
+  private _sendReliable(data: string) {
+    if (this.dc?.readyState === 'open') this.dc.send(data)
   }
 
   // ─── Receive ─────────────────────────────────────────────────────────────
@@ -173,6 +226,7 @@ export class GameNetwork {
 
   disconnect() {
     if (this.pollInterval) clearInterval(this.pollInterval)
+    this.pollInterval = null
     this.dc?.close()
     this.dcFast?.close()
     this.pc?.close()
@@ -182,5 +236,6 @@ export class GameNetwork {
     this.roomId = null
     this.remoteDescSet = false
     this.pendingCandidates = []
+    this._connectedFired = false
   }
 }
