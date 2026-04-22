@@ -13,11 +13,11 @@ const SPEED      = 8
 const JUMP_VEL   = -22
 const BALL_R     = 18
 const SLIME_R    = 52
-const FLOOR_Y    = 530
-const WALL_L     = 20
-const WALL_R     = CANVAS_W - 20
-const GOAL_W     = 80
-const GOAL_H     = 120
+export const FLOOR_Y    = 530
+export const WALL_L     = 20
+export const WALL_R     = CANVAS_W - 20
+export const GOAL_W     = 80
+export const GOAL_H     = 120
 const GOAL_L_X   = WALL_L + GOAL_W / 2
 const GOAL_R_X   = WALL_R - GOAL_W / 2
 
