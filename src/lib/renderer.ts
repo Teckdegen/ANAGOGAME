@@ -10,8 +10,8 @@ export function drawFrame(
   right: SlimeState,
   ball: BallState,
 ) {
-  // Background
-  ctx.fillStyle = '#2E1E72'
+  // Background — vivid purple matching the UI
+  ctx.fillStyle = '#5B4AE8'
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H)
 
   // Pitch markings
@@ -21,15 +21,25 @@ export function drawFrame(
   _drawGoal(ctx, WALL_L, FLOOR_Y - GOAL_H, GOAL_W, GOAL_H, false)
   _drawGoal(ctx, WALL_R - GOAL_W, FLOOR_Y - GOAL_H, GOAL_W, GOAL_H, true)
 
-  // Floor
-  ctx.fillStyle = '#1A7A1A'
+  // Floor — bright green grass
+  ctx.fillStyle = '#2E8B2E'
   ctx.fillRect(0, FLOOR_Y, CANVAS_W, CANVAS_H - FLOOR_Y)
-  // Floor outline
-  ctx.strokeStyle = '#FAD933'
-  ctx.lineWidth = 3
+  // Floor stripe
+  ctx.fillStyle = '#3AAA3A'
+  ctx.fillRect(0, FLOOR_Y, CANVAS_W, 12)
+  // Floor outline — orange like the UI accent
+  ctx.strokeStyle = '#E8820C'
+  ctx.lineWidth = 4
   ctx.beginPath()
   ctx.moveTo(0, FLOOR_Y)
   ctx.lineTo(CANVAS_W, FLOOR_Y)
+  ctx.stroke()
+  // Ink border under orange
+  ctx.strokeStyle = '#1A0808'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.moveTo(0, FLOOR_Y + 4)
+  ctx.lineTo(CANVAS_W, FLOOR_Y + 4)
   ctx.stroke()
 
   // Slimes
@@ -41,10 +51,10 @@ export function drawFrame(
 }
 
 function _drawPitch(ctx: CanvasRenderingContext2D) {
-  // Centre line
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)'
-  ctx.lineWidth = 2
-  ctx.setLineDash([8, 8])
+  // Centre line — white dashed
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'
+  ctx.lineWidth = 2.5
+  ctx.setLineDash([10, 8])
   ctx.beginPath()
   ctx.moveTo(CANVAS_W / 2, 0)
   ctx.lineTo(CANVAS_W / 2, FLOOR_Y)
@@ -53,10 +63,16 @@ function _drawPitch(ctx: CanvasRenderingContext2D) {
 
   // Centre circle
   ctx.beginPath()
-  ctx.arc(CANVAS_W / 2, FLOOR_Y - 80, 60, 0, Math.PI * 2)
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+  ctx.arc(CANVAS_W / 2, FLOOR_Y - 90, 70, 0, Math.PI * 2)
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)'
   ctx.lineWidth = 2
   ctx.stroke()
+
+  // Centre dot
+  ctx.beginPath()
+  ctx.arc(CANVAS_W / 2, FLOOR_Y - 90, 5, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'
+  ctx.fill()
 }
 
 function _drawGoal(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, flip: boolean) {
@@ -201,44 +217,49 @@ export function drawHUD(
   timeLeft: number,
   message?: string,
 ) {
-  // Score bar background
-  ctx.fillStyle = 'rgba(20,10,10,0.7)'
+  // Score bar — white pill with ink border
+  ctx.fillStyle = '#FFFFFF'
+  ctx.strokeStyle = '#1A0808'
+  ctx.lineWidth = 3
   ctx.beginPath()
-  _roundRect(ctx, CANVAS_W / 2 - 120, 6, 240, 40, 10)
+  _roundRect(ctx, CANVAS_W / 2 - 130, 6, 260, 42, 12)
   ctx.fill()
+  ctx.stroke()
 
-  // Timer
+  // Timer — purple text
   const m  = Math.floor(timeLeft / 60)
   const s  = Math.floor(timeLeft % 60)
-  const ms = Math.floor((timeLeft % 1) * 10)
-  ctx.fillStyle = '#FAD933'
-  ctx.font = 'bold 20px Fredoka One, sans-serif'
+  ctx.fillStyle = '#5B4AE8'
+  ctx.font = 'bold 22px "Fredoka One", sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}:${ms}`, CANVAS_W / 2, 33)
+  ctx.fillText(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`, CANVAS_W / 2, 35)
 
-  // Left score
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = 'bold 18px Fredoka One, sans-serif'
+  // Left score — ink text on left
+  ctx.fillStyle = '#1A0808'
+  ctx.font = 'bold 16px "Fredoka One", sans-serif'
   ctx.textAlign = 'left'
-  ctx.fillText(`${leftTeam}  ${leftScore}`, 12, 30)
+  ctx.fillText(`${leftTeam}  ${leftScore}`, 10, 28)
 
   // Right score
   ctx.textAlign = 'right'
-  ctx.fillText(`${rightScore}  ${rightTeam}`, CANVAS_W - 12, 30)
+  ctx.fillText(`${rightScore}  ${rightTeam}`, CANVAS_W - 10, 28)
 
-  // Goal message
+  // Goal message — orange card
   if (message) {
-    ctx.fillStyle = 'rgba(20,10,10,0.8)'
+    ctx.fillStyle = '#E8820C'
+    ctx.strokeStyle = '#1A0808'
+    ctx.lineWidth = 4
     ctx.beginPath()
-    _roundRect(ctx, CANVAS_W / 2 - 200, CANVAS_H / 2 - 40, 400, 80, 16)
+    _roundRect(ctx, CANVAS_W / 2 - 210, CANVAS_H / 2 - 44, 420, 88, 20)
     ctx.fill()
-    ctx.strokeStyle = '#FAD933'
-    ctx.lineWidth = 3
     ctx.stroke()
-    ctx.fillStyle = '#FAD933'
-    ctx.font = 'bold 28px Fredoka One, sans-serif'
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = 'bold 30px "Fredoka One", sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(message, CANVAS_W / 2, CANVAS_H / 2 + 10)
+    ctx.shadowColor = '#1A0808'
+    ctx.shadowOffsetY = 3
+    ctx.fillText(message, CANVAS_W / 2, CANVAS_H / 2 + 12)
+    ctx.shadowOffsetY = 0
   }
 }
 
