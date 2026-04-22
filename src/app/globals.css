@@ -9,9 +9,20 @@ body {
   background: #5B4AE8;
   color: #1A0808;
   width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  touch-action: none;
+  min-height: 100vh;
+  /* Allow scroll by default — portrait users need it */
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+
+/* In landscape (actual game mode) lock overflow */
+@media (orientation: landscape) {
+  body {
+    height: 100vh;
+    overflow: hidden;
+    touch-action: none;
+  }
 }
 
 /* ── Cartoon button — orange, thick ink border, press-down shadow ── */
@@ -85,7 +96,16 @@ body {
 
 /* ── Screen wrapper ── */
 .screen {
-  @apply w-screen h-screen bg-[#5B4AE8] overflow-hidden relative;
+  @apply w-screen bg-[#5B4AE8] relative;
+  min-height: 100vh;
+}
+
+/* In landscape the screen fills exactly the viewport */
+@media (orientation: landscape) {
+  .screen {
+    height: 100vh;
+    overflow: hidden;
+  }
 }
 
 /* ── Orange top/bottom accent bars ── */

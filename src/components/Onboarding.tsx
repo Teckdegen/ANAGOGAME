@@ -30,7 +30,8 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="screen flex items-center justify-center">
+    <div className="screen flex items-start justify-center py-8 px-4 overflow-y-auto
+                    landscape:items-center landscape:py-0 landscape:overflow-hidden">
       {/* Accent bars */}
       <div className="accent-bar top-0" />
       <div className="accent-bar bottom-0" />

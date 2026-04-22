@@ -4,6 +4,10 @@ const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      screens: {
+        landscape: { raw: '(orientation: landscape)' },
+        portrait:  { raw: '(orientation: portrait)' },
+      },
       colors: {
         // Dog cartoon palette — pulled from the French Bulldog image
         bg:      '#5B4AE8',   // vivid purple background (matches image bg exactly)
