@@ -1,6 +1,6 @@
 // WebRTC peer-to-peer with Google STUN + Open Relay TURN
 
-import { pushSignal, fetchSignals } from './supabase'
+import { pushSignal, fetchSignals, deleteSignals } from './supabase'
 
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: ['stun:stun.l.google.com:19302'] },
@@ -123,24 +123,38 @@ export class GameNetwork {
   // ─── Signal polling ─────────────────────────────────────────────────────
 
   private _startPolling() {
-    // Poll immediately, then every 800ms
+    // Poll immediately, then every 1.5s — fast enough for signaling, not spammy
     this._poll()
-    this.pollInterval = setInterval(() => this._poll(), 800)
+    this.pollInterval = setInterval(() => this._poll(), 1500)
+
+    // 90-second connection timeout — if WebRTC hasn't connected by then, give up
+    setTimeout(() => {
+      if (!this._connectedFired) {
+        this.onEvent({ type: 'failed', reason: 'Connection timed out. Try again.' })
+        this.disconnect()
+      }
+    }, 90_000)
   }
 
   private async _poll() {
     if (!this.roomId || this._connectedFired) return
     try {
       const signals = await fetchSignals(this.roomId, this.playerId)
+      const processedIds: number[] = []
       for (const sig of signals) {
         await this._handleSignal(sig)
+        processedIds.push(sig.id)
+      }
+      // Delete only after successful processing
+      if (processedIds.length > 0) {
+        deleteSignals(processedIds).catch(() => {})
       }
     } catch {
       // Network error during signaling — ignore, will retry
     }
   }
 
-  private async _handleSignal(sig: { type: string; payload: string }) {
+  private async _handleSignal(sig: { id: number; type: string; payload: string }) {
     if (!this.pc) return
 
     if (sig.type === 'offer' && !this._isHost) {

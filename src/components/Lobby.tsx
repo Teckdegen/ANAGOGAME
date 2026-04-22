@@ -62,13 +62,13 @@ export default function Lobby({ onStartGame, onLeaderboard, onDashboard }: Props
       const room = await createRoom(`${username}'s room`, id, username)
       setCurrentRoom(room)
 
-      // 10-second abandon timer — cancelled when opponent connects
+      // 60-second abandon timer — WebRTC can take time on mobile/TURN
       abandonRef.current = setTimeout(async () => {
         if (startedRef.current) return   // game already started, don't delete
         await deleteRoom(room.id).catch(() => {})
         setPanel('rooms')
         setError('Room closed — no one joined in time')
-      }, 10_000)
+      }, 60_000)
 
       const net = new GameNetwork()
       netRef.current = net

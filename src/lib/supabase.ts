@@ -93,12 +93,13 @@ export async function fetchSignals(roomId: number, myPlayerId: string): Promise<
     .neq('sender_id', myPlayerId)
     .order('created_at', { ascending: true })
   if (error) return []
-  // Delete processed signals
-  if (data && data.length > 0) {
-    const ids = data.map((r) => r.id)
-    await supabase.from('signals').delete().in('id', ids)
-  }
   return data ?? []
+}
+
+// Called by network.ts after signals have been fully processed
+export async function deleteSignals(ids: number[]): Promise<void> {
+  if (ids.length === 0) return
+  await supabase.from('signals').delete().in('id', ids)
 }
 
 // ─── Players / Stats ──────────────────────────────────────────────────────
