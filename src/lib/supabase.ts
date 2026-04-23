@@ -43,12 +43,12 @@ export interface LeaderboardRow {
 // ─── Rooms ────────────────────────────────────────────────────────────────
 
 export async function fetchOpenRooms(): Promise<Room[]> {
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
   const { data, error } = await supabase
     .from('rooms')
     .select('*')
     .eq('status', 'open')
-    .gte('created_at', tenMinutesAgo)
+    .gte('created_at', thirtyMinutesAgo)
     .order('created_at', { ascending: false })
     .limit(20)
   if (error) throw error
@@ -70,6 +70,14 @@ export async function joinRoomRecord(roomId: number, guestId: string, guestName:
     .from('rooms')
     .update({ status: 'full', player_count: 2, guest_id: guestId, guest_name: guestName })
     .eq('id', roomId)
+}
+
+export async function leaveRoomRecord(roomId: number, guestId: string): Promise<void> {
+  await supabase
+    .from('rooms')
+    .update({ status: 'open', player_count: 1, guest_id: '', guest_name: '' })
+    .eq('id', roomId)
+    .eq('guest_id', guestId)
 }
 
 export async function deleteRoom(roomId: number): Promise<void> {

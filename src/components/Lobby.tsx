@@ -2,20 +2,21 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { usePlayerStore } from '@/lib/store'
-import { fetchOpenRooms, createRoom, joinRoomRecord, deleteRoom, Room } from '@/lib/supabase'
+import { fetchOpenRooms, createRoom, joinRoomRecord, leaveRoomRecord, deleteRoom, Room } from '@/lib/supabase'
 import { GameNetwork } from '@/lib/network'
 import { sound } from '@/lib/sound'
 
 interface Props {
   // net is passed so GameScreen reuses the already-connected instance
   onStartGame:   (isHost: boolean, room: Room, net: GameNetwork) => void
+  onStartSolo:   () => void
   onLeaderboard: () => void
   onDashboard:   () => void
 }
 
 type Panel = 'rooms' | 'waiting'
 
-export default function Lobby({ onStartGame, onLeaderboard, onDashboard }: Props) {
+export default function Lobby({ onStartGame, onStartSolo, onLeaderboard, onDashboard }: Props) {
   const { username, ensureId } = usePlayerStore()
   const [panel,       setPanel]       = useState<Panel>('rooms')
   const [rooms,       setRooms]       = useState<Room[]>([])
@@ -24,6 +25,7 @@ export default function Lobby({ onStartGame, onLeaderboard, onDashboard }: Props
   const [waitTitle,   setWaitTitle]   = useState('ROOM OPEN')
   const [waitStatus,  setWaitStatus]  = useState('Waiting for another player...')
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null)
+  const [ownsRoom,    setOwnsRoom]    = useState(false)
 
   const netRef     = useRef<GameNetwork | null>(null)
   const abandonRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -61,14 +63,15 @@ export default function Lobby({ onStartGame, onLeaderboard, onDashboard }: Props
     try {
       const room = await createRoom(`${username}'s room`, id, username)
       setCurrentRoom(room)
+      setOwnsRoom(true)
 
-      // 60-second abandon timer — WebRTC can take time on mobile/TURN
+      // 30-second abandon timer — WebRTC can take time on mobile/TURN
       abandonRef.current = setTimeout(async () => {
         if (startedRef.current) return   // game already started, don't delete
         await deleteRoom(room.id).catch(() => {})
         setPanel('rooms')
-        setError('Room closed — no one joined in time')
-      }, 60_000)
+        setError('Room closed — no one joined in 30 seconds')
+      }, 30_000)
 
       const net = new GameNetwork()
       netRef.current = net
@@ -102,6 +105,7 @@ export default function Lobby({ onStartGame, onLeaderboard, onDashboard }: Props
     setError('')
     startedRef.current = false
     setCurrentRoom(room)
+    setOwnsRoom(false)
     setPanel('waiting')
     setWaitTitle('JOINING...')
     setWaitStatus('Connecting to host...')
@@ -118,6 +122,7 @@ export default function Lobby({ onStartGame, onLeaderboard, onDashboard }: Props
         setTimeout(() => onStartGame(false, room, net), 400)
       }
       if (e.type === 'failed') {
+        leaveRoomRecord(room.id, id).catch(() => {})
         setError(e.reason)
         setPanel('rooms')
       }
@@ -130,13 +135,33 @@ export default function Lobby({ onStartGame, onLeaderboard, onDashboard }: Props
 
   async function handleCancel() {
     sound.click()
-    clearTimeout(abandonRef.current!)
+    if (abandonRef.current) clearTimeout(abandonRef.current)
     netRef.current?.disconnect()
     netRef.current = null
-    if (currentRoom) await deleteRoom(currentRoom.id).catch(() => {})
+    if (currentRoom) {
+      if (ownsRoom) await deleteRoom(currentRoom.id).catch(() => {})
+      else await leaveRoomRecord(currentRoom.id, id).catch(() => {})
+    }
     setCurrentRoom(null)
+    setOwnsRoom(false)
     setPanel('rooms')
     refresh()
+  }
+
+  async function handleQuickPlayPvp() {
+    sound.confirm()
+    setError('')
+    setLoading(true)
+    try {
+      const data = await fetchOpenRooms()
+      const open = data.filter(r => r.host_id !== id)
+      if (open.length > 0) await handleJoin(open[0])
+      else await handleCreate()
+    } catch {
+      setError('Could not start PvP')
+    } finally {
+      setLoading(false)
+    }
   }
 
   // ─── Waiting panel ────────────────────────────────────────────────────
@@ -208,6 +233,10 @@ export default function Lobby({ onStartGame, onLeaderboard, onDashboard }: Props
             <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
           </svg>
         </button>
+        <button className="btn btn-purple btn-sm" onClick={handleQuickPlayPvp}>
+          <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white"><path d="M8 5v14l11-7z"/></svg>
+          PLAY PVP
+        </button>
         <button className="btn text-sm" onClick={handleCreate}>
           <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
@@ -217,6 +246,31 @@ export default function Lobby({ onStartGame, onLeaderboard, onDashboard }: Props
       </div>
 
       <div className="mx-4 h-[3px] rounded-full bg-[#E8820C] border-y border-[#1A0808] mb-2" />
+
+      {/* Solo / AI play button */}
+      <div className="px-4 mb-3">
+        <button
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-[3px] border-[#1A0808] bg-[#FAD933] font-bold text-[#1A0808] text-base"
+          style={{ boxShadow: '0 4px 0 #1A0808' }}
+          onClick={() => { sound.confirm(); onStartSolo() }}
+        >
+          <div className="w-9 h-9 rounded-xl border-[2px] border-[#1A0808] bg-[#E8820C] flex items-center justify-center shrink-0"
+               style={{ boxShadow: '0 2px 0 #1A0808' }}>
+            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <div className="flex-1 text-left">
+            <p className="font-bold text-[#1A0808]">PLAY vs AI</p>
+            <p className="text-xs text-[#5C3317] font-normal">Solo practice — no opponent needed</p>
+          </div>
+          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#1A0808]"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2 px-4 mb-2">
+        <span className="text-white font-bold text-sm" style={{ textShadow: '0 1px 0 #1A0808' }}>
+          — OR JOIN A PVP ROOM —
+        </span>
+      </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col gap-2">
         {loading && <p className="text-center text-white/70 font-bold mt-8">Looking for rooms...</p>}

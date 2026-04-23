@@ -12,7 +12,7 @@ const GRAVITY    = 2.5
 const SPEED      = 8
 const JUMP_VEL   = -22
 const BALL_R     = 18
-const SLIME_R    = 52
+export const SLIME_R    = 52
 export const FLOOR_Y    = 530
 export const WALL_L     = 20
 export const WALL_R     = CANVAS_W - 20
@@ -59,11 +59,16 @@ export class GameEngine {
   public  right: SlimeState
   public  ball:  BallState
 
+  // Input keys — each side has its own
   private leftKeys  = { left: false, right: false, up: false }
   private rightKeys = { left: false, right: false, up: false }
 
   private leftOnGround  = true
   private rightOnGround = true
+
+  // AI state
+  private aiEnabled = false
+  private aiJumpCooldown = 0
 
   public onGoal: GoalCallback = () => {}
 
@@ -76,6 +81,10 @@ export class GameEngine {
 
     this._buildWorld()
     this._setupCollisions()
+  }
+
+  enableAI() {
+    this.aiEnabled = true
   }
 
   private _buildWorld() {
@@ -152,9 +161,50 @@ export class GameEngine {
   setLeftKeys(keys: Partial<typeof this.leftKeys>)  { Object.assign(this.leftKeys,  keys) }
   setRightKeys(keys: Partial<typeof this.rightKeys>) { Object.assign(this.rightKeys, keys) }
 
+  // ─── AI logic (controls right slime) ─────────────────────────────────────
+
+  private _tickAI() {
+    if (!this.aiEnabled) return
+
+    const bx = this.ball.x
+    const by = this.ball.y
+    const bvx = this.ball.vx
+    const rx = this.right.x
+    const ry = this.right.y
+
+    // Predict where ball will be in ~0.4s
+    const predictX = bx + bvx * 12
+
+    // Target: get under the ball if it's on our side, else defend goal
+    const targetX = bx > CANVAS_W / 2 - 50
+      ? Math.min(predictX, WALL_R - SLIME_R)
+      : WALL_R - 120  // defend near goal
+
+    const dx = targetX - rx
+    const keys = { left: false, right: false, up: false }
+
+    if (Math.abs(dx) > 15) {
+      keys.left  = dx < 0
+      keys.right = dx > 0
+    }
+
+    // Jump: ball is above and close horizontally
+    this.aiJumpCooldown = Math.max(0, this.aiJumpCooldown - 1)
+    const ballClose = Math.abs(bx - rx) < SLIME_R * 2.5
+    const ballAbove = by < ry - 20
+    if (ballClose && ballAbove && this.rightOnGround && this.aiJumpCooldown === 0) {
+      keys.up = true
+      this.aiJumpCooldown = 30
+    }
+
+    this.rightKeys = keys
+  }
+
   // ─── Step (called every animation frame) ─────────────────────────────────
 
   step(dt: number) {
+    if (this.aiEnabled) this._tickAI()
+
     this._applyInput(this.leftBody,  this.leftKeys,  this.leftOnGround,  'left')
     this._applyInput(this.rightBody, this.rightKeys, this.rightOnGround, 'right')
 
@@ -233,7 +283,9 @@ export class GameEngine {
     this.rightOnGround = true
   }
 
-  // Apply remote state (for the opponent's slime)
+  // Apply remote slime position (PvP: opponent's slime)
+  // isHost=true means the HOST's slime data is arriving (left slime)
+  // isHost=false means the GUEST's slime data is arriving (right slime)
   applyRemoteSlime(isHost: boolean, pos: [number, number]) {
     const body = isHost ? this.leftBody : this.rightBody
     Matter.Body.setPosition(body, { x: pos[0], y: pos[1] })

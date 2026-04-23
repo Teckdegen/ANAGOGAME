@@ -18,6 +18,7 @@ export default function Home() {
   const [gameRoom, setGameRoom] = useState<Room | null>(null)
   const [gameNet,  setGameNet]  = useState<GameNetwork | null>(null)
   const [isHost,   setIsHost]   = useState(false)
+  const [isSolo,   setIsSolo]   = useState(false)
 
   useEffect(() => {
     setHydrated(true)
@@ -42,21 +43,31 @@ export default function Home() {
         <Lobby
           onStartGame={(host, room, net) => {
             setIsHost(host)
+            setIsSolo(false)
             setGameRoom(room)
             setGameNet(net)
+            setScreen('game')
+          }}
+          onStartSolo={() => {
+            setIsHost(true)
+            setIsSolo(true)
+            setGameRoom(null)
+            setGameNet(null)
             setScreen('game')
           }}
           onLeaderboard={() => setScreen('leaderboard')}
           onDashboard={()   => setScreen('dashboard')}
         />
       )}
-      {screen === 'game' && gameRoom && gameNet && (
+      {screen === 'game' && (
         <GameScreen
           room={gameRoom}
           isHost={isHost}
           net={gameNet}
+          isSolo={isSolo}
           onGameEnd={() => {
             setGameNet(null)
+            setIsSolo(false)
             setScreen('lobby')
           }}
         />
