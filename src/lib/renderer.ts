@@ -9,6 +9,8 @@ export function drawFrame(
   left: SlimeState,
   right: SlimeState,
   ball: BallState,
+  leftWarn = false,
+  rightWarn = false,
 ) {
   // Background — vivid purple matching the UI
   ctx.fillStyle = '#5B4AE8'
@@ -17,11 +19,11 @@ export function drawFrame(
   // Pitch markings
   _drawPitch(ctx)
 
-  // Goals
+  // Goals (drawn behind floor so net doesn't overlap grass)
   _drawGoal(ctx, WALL_L, FLOOR_Y - GOAL_H, GOAL_W, GOAL_H, false)
   _drawGoal(ctx, WALL_R - GOAL_W, FLOOR_Y - GOAL_H, GOAL_W, GOAL_H, true)
 
-  // Floor — bright green grass
+  // Floor — bright green grass (drawn AFTER goals, BEFORE slimes+ball)
   ctx.fillStyle = '#2E8B2E'
   ctx.fillRect(0, FLOOR_Y, CANVAS_W, CANVAS_H - FLOOR_Y)
   // Floor stripe
@@ -42,11 +44,15 @@ export function drawFrame(
   ctx.lineTo(CANVAS_W, FLOOR_Y + 4)
   ctx.stroke()
 
-  // Slimes
-  _drawSlime(ctx, left,  false)
-  _drawSlime(ctx, right, true)
+  // Goal post fronts — redraw on top of grass so posts are always visible
+  _drawGoalPosts(ctx, WALL_L, FLOOR_Y - GOAL_H, GOAL_W, GOAL_H, false)
+  _drawGoalPosts(ctx, WALL_R - GOAL_W, FLOOR_Y - GOAL_H, GOAL_W, GOAL_H, true)
 
-  // Ball
+  // Slimes
+  _drawSlime(ctx, left,  false, leftWarn)
+  _drawSlime(ctx, right, true,  rightWarn)
+
+  // Ball — always drawn last so it's on top of everything
   _drawBall(ctx, ball)
 }
 
@@ -83,7 +89,7 @@ function _drawGoal(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
     x = 0; y = 0
   }
 
-  // Net
+  // Net only (posts drawn separately on top of grass)
   ctx.strokeStyle = 'rgba(255,255,255,0.25)'
   ctx.lineWidth = 1
   for (let gx = 0; gx <= w; gx += 12) {
@@ -93,7 +99,18 @@ function _drawGoal(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
     ctx.beginPath(); ctx.moveTo(x, y + gy); ctx.lineTo(x + w, y + gy); ctx.stroke()
   }
 
-  // Posts
+  ctx.restore()
+}
+
+function _drawGoalPosts(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, flip: boolean) {
+  ctx.save()
+  if (flip) {
+    ctx.translate(x + w, y)
+    ctx.scale(-1, 1)
+    x = 0; y = 0
+  }
+
+  // Posts — drawn on top of grass so they're always visible
   ctx.strokeStyle = '#FAD933'
   ctx.lineWidth = 5
   ctx.lineJoin = 'round'
@@ -104,10 +121,20 @@ function _drawGoal(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.lineTo(x + w, y + h)
   ctx.stroke()
 
+  // Post outline
+  ctx.strokeStyle = '#1A0808'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(x, y + h)
+  ctx.lineTo(x, y)
+  ctx.lineTo(x + w, y)
+  ctx.lineTo(x + w, y + h)
+  ctx.stroke()
+
   ctx.restore()
 }
 
-function _drawSlime(ctx: CanvasRenderingContext2D, s: SlimeState, facingLeft: boolean) {
+function _drawSlime(ctx: CanvasRenderingContext2D, s: SlimeState, facingLeft: boolean, campWarn = false) {
   const { x, y } = s
   const bodyColor = '#' + s.team.body
   const decoColor = '#' + s.team.decoration
@@ -121,6 +148,19 @@ function _drawSlime(ctx: CanvasRenderingContext2D, s: SlimeState, facingLeft: bo
   ctx.ellipse(0, SLIME_R - 4, SLIME_R * 0.9, 10, 0, 0, Math.PI * 2)
   ctx.fillStyle = 'rgba(0,0,0,0.3)'
   ctx.fill()
+
+  // Camping warning — pulsing red ring
+  if (campWarn) {
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 120)
+    ctx.beginPath()
+    ctx.arc(0, 0, SLIME_R + 8, Math.PI, 0)
+    ctx.lineTo(SLIME_R + 8, SLIME_R - 4)
+    ctx.lineTo(-(SLIME_R + 8), SLIME_R - 4)
+    ctx.closePath()
+    ctx.strokeStyle = `rgba(255,40,40,${0.6 + 0.4 * pulse})`
+    ctx.lineWidth = 5
+    ctx.stroke()
+  }
 
   // Body (semicircle)
   ctx.beginPath()
@@ -216,6 +256,8 @@ export function drawHUD(
   rightTeam: string, rightScore: number,
   timeLeft: number,
   message?: string,
+  leftWarn = false,
+  rightWarn = false,
 ) {
   // Score bar — white pill with ink border
   ctx.fillStyle = '#FFFFFF'
@@ -260,6 +302,21 @@ export function drawHUD(
     ctx.shadowOffsetY = 3
     ctx.fillText(message, CANVAS_W / 2, CANVAS_H / 2 + 12)
     ctx.shadowOffsetY = 0
+  }
+
+  // Camping warnings — shown near each goal
+  const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 150)
+  if (leftWarn) {
+    ctx.fillStyle = `rgba(255,40,40,${0.75 + 0.25 * pulse})`
+    ctx.font = 'bold 13px "Fredoka One", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('⚠ MOVE! 5s LIMIT', WALL_L + GOAL_W / 2 + 20, FLOOR_Y - GOAL_H - 10)
+  }
+  if (rightWarn) {
+    ctx.fillStyle = `rgba(255,40,40,${0.75 + 0.25 * pulse})`
+    ctx.font = 'bold 13px "Fredoka One", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('⚠ MOVE! 5s LIMIT', WALL_R - GOAL_W / 2 - 20, FLOOR_Y - GOAL_H - 10)
   }
 }
 

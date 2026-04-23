@@ -48,7 +48,7 @@ export default function Leaderboard({ onBack }: { onBack: () => void }) {
   const rankLabel = (i: number) => ['1ST', '2ND', '3RD'][i] ?? String(i + 1)
 
   return (
-    <div className="screen flex flex-col overflow-hidden">
+    <div className="screen flex flex-col">
       <div className="accent-bar top-0" />
 
       {/* Header */}

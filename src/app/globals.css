@@ -20,8 +20,8 @@ body {
 @media (orientation: landscape) {
   body {
     height: 100vh;
-    overflow: hidden;
-    touch-action: none;
+    overflow-y: auto;
+    touch-action: pan-y;
   }
 }
 
@@ -104,7 +104,7 @@ body {
 @media (orientation: landscape) {
   .screen {
     height: 100vh;
-    overflow: hidden;
+    overflow-y: auto;
   }
 }
 

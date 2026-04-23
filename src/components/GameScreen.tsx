@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Room, submitMatch, leaveRoomRecord, deleteRoom } from '@/lib/supabase'
+import { Room, submitMatch, deleteRoom } from '@/lib/supabase'
 import { GameEngine, CANVAS_W, CANVAS_H } from '@/lib/gameEngine'
 import { drawFrame, drawHUD } from '@/lib/renderer'
 import { GameNetwork } from '@/lib/network'
@@ -158,8 +158,8 @@ export default function GameScreen({ room, isHost, net, isSolo = false, onGameEn
       if (canvas) {
         const ctx = canvas.getContext('2d')!
         const { leftScore: ls, rightScore: rs } = useGameStore.getState()
-        drawFrame(ctx, eng.left, eng.right, eng.ball)
-        drawHUD(ctx, eng.left.team.name, ls, eng.right.team.name, rs, timeLeftRef.current, messageRef.current || undefined)
+        drawFrame(ctx, eng.left, eng.right, eng.ball, eng.leftCampWarning, eng.rightCampWarning)
+        drawHUD(ctx, eng.left.team.name, ls, eng.right.team.name, rs, timeLeftRef.current, messageRef.current || undefined, eng.leftCampWarning, eng.rightCampWarning)
       }
 
       rafRef.current = requestAnimationFrame(loop)
@@ -199,9 +199,7 @@ export default function GameScreen({ room, isHost, net, isSolo = false, onGameEn
       await Promise.all([
         submitMatch(playerId, username, wallet, myScore > theirScore, myScore, theirScore).catch(() => {}),
         room
-          ? (isHost
-              ? deleteRoom(room.id).catch(() => {})
-              : leaveRoomRecord(room.id, playerId).catch(() => {}))
+          ? deleteRoom(room.id).catch(() => {})
           : Promise.resolve(),
       ])
     }
@@ -236,12 +234,13 @@ export default function GameScreen({ room, isHost, net, isSolo = false, onGameEn
 
         {paused && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <div className="card text-center">
+            <div className="card text-center flex flex-col items-center gap-3">
               <svg viewBox="0 0 24 24" className="w-10 h-10 fill-[#1A0808] mx-auto mb-2">
                 <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
               </svg>
               <p className="text-xl font-bold">PAUSED</p>
-              <button className="btn mt-4" onClick={togglePause}>RESUME</button>
+              <button className="btn mt-2" onClick={togglePause}>RESUME</button>
+              <button className="btn btn-danger mt-2" onClick={() => { if (window.confirm('End game and return to lobby?')) endGame() }}>END GAME</button>
             </div>
           </div>
         )}

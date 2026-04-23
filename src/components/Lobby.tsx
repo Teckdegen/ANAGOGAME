@@ -38,7 +38,7 @@ export default function Lobby({ onStartGame, onStartSolo, onLeaderboard, onDashb
       const data = await fetchOpenRooms()
       setRooms(data.filter(r => r.host_id !== id))
       setError('')
-    } catch { setError('Could not load rooms') }
+    } catch { setError('Could not load rooms. Check your internet / Supabase config.') }
     finally { setLoading(false) }
   }, [id])
 
@@ -93,7 +93,7 @@ export default function Lobby({ onStartGame, onStartSolo, onLeaderboard, onDashb
 
       await net.hostRoom(room.id, id)
     } catch (err: any) {
-      setError(err.message ?? 'Could not create room')
+      setError(err.message ?? 'Could not create room. Check your internet / Supabase config.')
       setPanel('rooms')
     }
   }
@@ -194,7 +194,7 @@ export default function Lobby({ onStartGame, onStartSolo, onLeaderboard, onDashb
   // ─── Rooms panel ──────────────────────────────────────────────────────
 
   return (
-    <div className="screen flex flex-col overflow-hidden">
+    <div className="screen flex flex-col">
       <div className="accent-bar top-0" />
 
       <div className="flex items-center gap-2 px-4 pt-8 pb-2">
@@ -250,9 +250,9 @@ export default function Lobby({ onStartGame, onStartSolo, onLeaderboard, onDashb
       {/* Solo / AI play button */}
       <div className="px-4 mb-3">
         <button
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-[3px] border-[#1A0808] bg-[#FAD933] font-bold text-[#1A0808] text-base"
+          disabled
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-[3px] border-[#1A0808] bg-[#FAD933] font-bold text-[#1A0808] text-base opacity-50 pointer-events-none"
           style={{ boxShadow: '0 4px 0 #1A0808' }}
-          onClick={() => { sound.confirm(); onStartSolo() }}
         >
           <div className="w-9 h-9 rounded-xl border-[2px] border-[#1A0808] bg-[#E8820C] flex items-center justify-center shrink-0"
                style={{ boxShadow: '0 2px 0 #1A0808' }}>

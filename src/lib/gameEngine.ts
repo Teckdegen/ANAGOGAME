@@ -70,6 +70,13 @@ export class GameEngine {
   private aiEnabled = false
   private aiJumpCooldown = 0
 
+  // Goal-camping timers (seconds × 60fps ticks)
+  private leftGoalTicks  = 0
+  private rightGoalTicks = 0
+  // Warning flash state (exposed for renderer)
+  public leftCampWarning  = false
+  public rightCampWarning = false
+
   public onGoal: GoalCallback = () => {}
 
   constructor(leftTeamIdx = 0, rightTeamIdx = 1) {
@@ -90,12 +97,12 @@ export class GameEngine {
   private _buildWorld() {
     const { Bodies, World } = Matter
 
-    // Floor
-    this.floor = Bodies.rectangle(CANVAS_W / 2, FLOOR_Y + 25, CANVAS_W, 50, { isStatic: true, label: 'floor' })
+    // Floor — extra thick to prevent ball tunneling
+    this.floor = Bodies.rectangle(CANVAS_W / 2, FLOOR_Y + 200, CANVAS_W, 400, { isStatic: true, label: 'floor' })
 
-    // Walls
-    this.wallLeft  = Bodies.rectangle(WALL_L - 10, CANVAS_H / 2, 20, CANVAS_H, { isStatic: true, label: 'wall' })
-    this.wallRight = Bodies.rectangle(WALL_R + 10, CANVAS_H / 2, 20, CANVAS_H, { isStatic: true, label: 'wall' })
+    // Walls — extra thick to prevent ball tunneling
+    this.wallLeft  = Bodies.rectangle(WALL_L - 100, CANVAS_H / 2, 200, CANVAS_H * 2, { isStatic: true, label: 'wall' })
+    this.wallRight = Bodies.rectangle(WALL_R + 100, CANVAS_H / 2, 200, CANVAS_H * 2, { isStatic: true, label: 'wall' })
 
     // Goal posts (thin static rectangles)
     const gp = (x: number, y: number) => Bodies.rectangle(x, y, 10, 10, { isStatic: true, label: 'goalpost', restitution: 0.3 })
@@ -215,10 +222,71 @@ export class GameEngine {
     Matter.Body.setAngularVelocity(this.rightBody, 0)
 
     Matter.Engine.update(this.engine, dt)
+    this._clampBall()
+    this._checkCamping()
 
-    // Sync state
     this._syncState()
     this._checkGoals()
+  }
+
+  // ─── Goal-camping enforcement ─────────────────────────────────────────────
+  // If a slime stays inside the OPPONENT's goal zone for >5 seconds, boot them
+  // back to their own half. Left slime must not camp the LEFT goal (their own
+  // net is on the left, so camping = blocking). Actually in Slime Soccer the
+  // left player defends the left goal — camping the OPPONENT's goal (right) is
+  // the exploit. We penalise any slime that stays inside either goal zone.
+
+  private _checkCamping() {
+    const TICKS_LIMIT = 5 * 60  // 5 seconds at ~60fps
+    const WARN_TICKS  = 3 * 60  // show warning after 3 seconds
+
+    const lx = this.leftBody.position.x
+    const ly = this.leftBody.position.y
+    const rx = this.rightBody.position.x
+    const ry = this.rightBody.position.y
+
+    // Left slime in left goal zone (camping own goal — blocking)
+    const leftInLeftGoal  = lx < WALL_L + GOAL_W + SLIME_R && ly > FLOOR_Y - GOAL_H - SLIME_R
+    // Left slime in right goal zone (camping opponent goal)
+    const leftInRightGoal = lx > WALL_R - GOAL_W - SLIME_R && ly > FLOOR_Y - GOAL_H - SLIME_R
+
+    // Right slime in right goal zone
+    const rightInRightGoal = rx > WALL_R - GOAL_W - SLIME_R && ry > FLOOR_Y - GOAL_H - SLIME_R
+    // Right slime in left goal zone
+    const rightInLeftGoal  = rx < WALL_L + GOAL_W + SLIME_R && ry > FLOOR_Y - GOAL_H - SLIME_R
+
+    const leftCamping  = leftInLeftGoal  || leftInRightGoal
+    const rightCamping = rightInRightGoal || rightInLeftGoal
+
+    if (leftCamping) {
+      this.leftGoalTicks++
+      this.leftCampWarning = this.leftGoalTicks >= WARN_TICKS
+      if (this.leftGoalTicks >= TICKS_LIMIT) {
+        // Boot left slime to their own half
+        Matter.Body.setPosition(this.leftBody, { x: 256, y: FLOOR_Y - SLIME_R })
+        Matter.Body.setVelocity(this.leftBody, { x: 0, y: -8 })
+        this.leftGoalTicks = 0
+        this.leftCampWarning = false
+      }
+    } else {
+      this.leftGoalTicks = 0
+      this.leftCampWarning = false
+    }
+
+    if (rightCamping) {
+      this.rightGoalTicks++
+      this.rightCampWarning = this.rightGoalTicks >= WARN_TICKS
+      if (this.rightGoalTicks >= TICKS_LIMIT) {
+        // Boot right slime to their own half
+        Matter.Body.setPosition(this.rightBody, { x: 768, y: FLOOR_Y - SLIME_R })
+        Matter.Body.setVelocity(this.rightBody, { x: 0, y: -8 })
+        this.rightGoalTicks = 0
+        this.rightCampWarning = false
+      }
+    } else {
+      this.rightGoalTicks = 0
+      this.rightCampWarning = false
+    }
   }
 
   private _applyInput(body: Matter.Body, keys: typeof this.leftKeys, onGround: boolean, side: 'left' | 'right') {
@@ -229,6 +297,30 @@ export class GameEngine {
       if (side === 'left')  this.leftOnGround  = false
       if (side === 'right') this.rightOnGround = false
     }
+  }
+
+  private _clampBall() {
+    const b = this.ballBody
+    const r = BALL_R
+    let x = b.position.x
+    let y = b.position.y
+    let vx = b.velocity.x
+    let vy = b.velocity.y
+
+    if (y > FLOOR_Y - r) {
+      y = FLOOR_Y - r
+      vy = Math.min(vy, 0)
+    }
+    if (x < r) {
+      x = r
+      vx = Math.max(vx, 0)
+    }
+    if (x > CANVAS_W - r) {
+      x = CANVAS_W - r
+      vx = Math.min(vx, 0)
+    }
+    Matter.Body.setPosition(b, { x, y })
+    Matter.Body.setVelocity(b, { x: vx, y: vy })
   }
 
   private _syncState() {
